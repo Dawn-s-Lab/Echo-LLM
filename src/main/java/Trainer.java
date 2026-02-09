@@ -31,22 +31,24 @@ public class Trainer {
                     model.output[d][nextToken] += lr * 0.1;
                     // Push away from other likely tokens slightly to sharpen distribution
                     for (int v = 0; v < 256; v++) {
-                        if (v != nextToken && lastProbs[v] > 0.1) {
-                            model.output[d][v] -= lr * 0.02;
+                        if (v != nextToken && lastProbs[v] > 0.05) {
+                            model.output[d][v] -= lr * 0.01;
                         }
                     }
                 }
                 
                 // Update embeddings for the context
-                for (int t : input) {
+                for (int tIdx = 0; tIdx < input.length; tIdx++) {
+                    int t = input[tIdx];
                     if (t < 256) {
                         for (int d = 0; d < model.embedding.table[t].length; d++) {
-                            model.embedding.table[t][d] += lr * 0.01;
+                            // Only update if this token contributed to the last prediction (heuristic)
+                            model.embedding.table[t][d] += lr * 0.01 * (tIdx + 1) / contextWindow;
                         }
                     }
                 }
             }
-            if (epoch % 20 == 0) {
+            if (epoch % 50 == 0) {
                 System.out.println("Epoch " + epoch + " Loss: " + (totalLoss / count));
             }
         }

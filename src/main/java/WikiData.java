@@ -38,7 +38,7 @@ public class WikiData {
                 String cleaned = extract.replace("\\n", " ")
                         .replace("\\\"", "\"")
                         .replace("\\\\", "\\")
-                        .replaceAll("[^\\x00-\\x7F]", "");
+                        .replaceAll("[^\\x20-\\x7E]", " ");
                 
                 if (cleaned.isEmpty()) {
                     return "Wikipedia article is empty or contains no ASCII text.";

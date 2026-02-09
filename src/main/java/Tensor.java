@@ -24,9 +24,12 @@ public class Tensor {
         double[][] out = new double[X.length][X[0].length];
 
         for (int i = 0; i < X.length; i++) {
+            double max = X[i][0];
+            for (int j = 1; j < X[0].length; j++) if (X[i][j] > max) max = X[i][j];
+
             double sum = 0;
             for (int j = 0; j < X[0].length; j++) {
-                out[i][j] = Math.exp(X[i][j]);
+                out[i][j] = Math.exp(X[i][j] - max);
                 sum += out[i][j];
             }
             for (int j = 0; j < X[0].length; j++)
