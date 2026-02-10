@@ -10,7 +10,11 @@ public class Prompt {
         for (int i = 0; i < steps; i++) {
 
             // convert current text to tokens
-            int[] tokens = text.chars().toArray();
+            int[] rawChars = text.chars().toArray();
+            int[] tokens = new int[rawChars.length];
+            for (int j = 0; j < rawChars.length; j++) {
+                tokens[j] = (rawChars[j] >= 0 && rawChars[j] < 256) ? rawChars[j] : ' ';
+            }
 
             // run model
             double[][] probs = model.forward(tokens);

@@ -62,4 +62,25 @@ public class Tensor {
                 out[i][j] = A[i][j] * scalar;
         return out;
     }
+
+    static double[][] mul(double[][] A, double[][] B) {
+        double[][] out = new double[A.length][A[0].length];
+        for (int i = 0; i < A.length; i++)
+            for (int j = 0; j < A[0].length; j++)
+                out[i][j] = A[i][j] * B[i][j];
+        return out;
+    }
+    static double[][] transpose(double[][] M) {
+        double[][] t = new double[M[0].length][M.length];
+        for (int i = 0; i < M.length; i++)
+            for (int j = 0; j < M[0].length; j++)
+                t[j][i] = M[i][j];
+        return t;
+    }
+
+    static double sum(double[][] M) {
+        double s = 0;
+        for (double[] row : M) for (double v : row) s += v;
+        return s;
+    }
 }

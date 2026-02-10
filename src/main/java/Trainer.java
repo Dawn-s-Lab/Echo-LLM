@@ -16,7 +16,7 @@ public class Trainer {
                 System.arraycopy(tokens, i, input, 0, contextWindow);
                 
                 int nextToken = tokens[i + contextWindow];
-                if (nextToken >= 256) nextToken = 0;
+                if (nextToken < 0 || nextToken >= 256) nextToken = ' ';
 
                 // Forward
                 double[][] probs = model.forward(input);
@@ -26,30 +26,70 @@ public class Trainer {
                 totalLoss += -Math.log(lastProbs[nextToken] + 1e-10);
                 count++;
 
-                // Slightly better heuristic: nudge towards target, away from others
-                for (int d = 0; d < model.output.length; d++) {
-                    model.output[d][nextToken] += lr * 0.1;
-                    // Push away from other likely tokens slightly to sharpen distribution
-                    for (int v = 0; v < 256; v++) {
-                        if (v != nextToken && lastProbs[v] > 0.05) {
-                            model.output[d][v] -= lr * 0.01;
-                        }
+                // Backward pass (simplified backprop)
+                // dLoss/dlogits = probs - target
+                double[][] dLogits = new double[probs.length][256];
+                for(int t=0; t<probs.length; t++) {
+                    for(int v=0; v<256; v++) {
+                        dLogits[t][v] = probs[t][v];
                     }
                 }
+                dLogits[probs.length-1][nextToken] -= 1.0;
+
+                // dLoss/dOutputWeights = lastBlockOut^T * dLogits
+                double[][] dOutput = Tensor.matmul(Tensor.transpose(model.lastBlockOut), dLogits);
+                // dLoss/dLastBlockOut = dLogits * OutputWeights^T
+                double[][] dBlockOut = Tensor.matmul(dLogits, Tensor.transpose(model.output));
+
+                // Backward through TransformerBlock
+                // Residual connections: dX = dBlockOut + dFF_out + dAttn_out
+                // FF backward
+                FeedForward ff = model.block.ff;
+                double[][] dFFOut = dBlockOut;
+                double[][] dW2 = Tensor.matmul(Tensor.transpose(ff.lastH), dFFOut);
+                double[][] dH = Tensor.matmul(dFFOut, Tensor.transpose(ff.W2));
+                // ReLU backward
+                double[][] dZ = new double[ff.lastH.length][ff.lastH[0].length];
+                for(int row=0; row<dH.length; row++) {
+                    for(int col=0; col<dH[0].length; col++) {
+                        if(ff.lastH[row][col] > 0) dZ[row][col] = dH[row][col];
+                    }
+                }
+                double[][] dW1 = Tensor.matmul(Tensor.transpose(ff.lastX), dZ);
+                double[][] dFF_in = Tensor.matmul(dZ, Tensor.transpose(ff.W1));
+
+                // Attention backward (very simplified)
+                Attention attn = model.block.attention;
+                double[][] dAttnOut = dBlockOut;
+                double[][] dWv = Tensor.matmul(Tensor.transpose(attn.lastX), Tensor.matmul(Tensor.transpose(attn.lastWeights), dAttnOut));
+                double[][] dAttnIn = Tensor.matmul(Tensor.matmul(dAttnOut, Tensor.transpose(attn.lastV)), attn.lastWeights); // heuristic
+
+                // Update weights (SGD)
+                update(model.output, dOutput, lr);
+                update(ff.W2, dW2, lr);
+                update(ff.W1, dW1, lr);
+                update(attn.Wv, dWv, lr);
                 
-                // Update embeddings for the context
-                for (int tIdx = 0; tIdx < input.length; tIdx++) {
-                    int t = input[tIdx];
-                    if (t < 256) {
-                        for (int d = 0; d < model.embedding.table[t].length; d++) {
-                            // Only update if this token contributed to the last prediction (heuristic)
-                            model.embedding.table[t][d] += lr * 0.01 * (tIdx + 1) / contextWindow;
+                // Update embeddings
+                for(int t=0; t<input.length; t++) {
+                    int tok = input[t];
+                    if(tok >= 0 && tok < 256) {
+                        for(int d=0; d<model.embedding.table[tok].length; d++) {
+                            model.embedding.table[tok][d] -= lr * dBlockOut[t][d];
                         }
                     }
                 }
             }
-            if (epoch % 50 == 0) {
+            if (epoch % 10 == 0) {
                 System.out.println("Epoch " + epoch + " Loss: " + (totalLoss / count));
+            }
+        }
+    }
+
+    private static void update(double[][] weight, double[][] grad, double lr) {
+        for(int i=0; i<weight.length; i++) {
+            for(int j=0; j<weight[0].length; j++) {
+                weight[i][j] -= lr * grad[i][j];
             }
         }
     }

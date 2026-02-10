@@ -1,56 +1,46 @@
 public class Attention {
 
     double[][] Wq, Wk, Wv;
+    double[][] lastX, lastWeights, lastV, lastScores;
 
     Attention(int dim) {
-        Wq = random(dim);
-        Wk = random(dim);
-        Wv = random(dim);
+        Wq = random(dim, dim);
+        Wk = random(dim, dim);
+        Wv = random(dim, dim);
     }
 
-    double[][] random(int dim) {
-        double[][] m = new double[dim][dim];
-        for (int i = 0; i < dim; i++)
-            for (int j = 0; j < dim; j++)
-                m[i][j] = Math.random() - 0.5;
+    double[][] random(int rows, int cols) {
+        double[][] m = new double[rows][cols];
+        double scale = Math.sqrt(2.0 / (rows + cols));
+        for (int i = 0; i < rows; i++)
+            for (int j = 0; j < cols; j++)
+                m[i][j] = (Math.random() - 0.5) * 2 * scale;
         return m;
     }
 
     double[][] forward(double[][] X) {
-
+        this.lastX = X;
         double[][] Q = Tensor.matmul(X, Wq);
         double[][] K = Tensor.matmul(X, Wk);
-        double[][] V = Tensor.matmul(X, Wv);
+        this.lastV = Tensor.matmul(X, Wv);
 
-        double[][] scores = Tensor.matmul(Q, transpose(K));
+        double[][] scores = Tensor.matmul(Q, Tensor.transpose(K));
 
         // scale
-        double scale = 1.0 / Math.sqrt(X[0].length);
+        double scale = 1.0 / Math.sqrt(Wq[0].length);
         for (int i = 0; i < scores.length; i++)
             for (int j = 0; j < scores[0].length; j++)
                 scores[i][j] *= scale;
 
-        double[][] weights = Tensor.softmax(scores);
-
         // causal mask
-        for (int i = 0; i < weights.length; i++) {
-            for (int j = i + 1; j < weights[0].length; j++) {
-                weights[i][j] = 0;
+        for (int i = 0; i < scores.length; i++) {
+            for (int j = i + 1; j < scores[0].length; j++) {
+                scores[i][j] = -1e9;
             }
-            // re-normalize
-            double sum = 0;
-            for (int j = 0; j <= i; j++) sum += weights[i][j];
-            for (int j = 0; j <= i; j++) weights[i][j] /= sum;
         }
+        this.lastScores = scores;
+        this.lastWeights = Tensor.softmax(scores);
 
-        return Tensor.matmul(weights, V);
-    }
-
-    double[][] transpose(double[][] M) {
-        double[][] t = new double[M[0].length][M.length];
-        for (int i = 0; i < M.length; i++)
-            for (int j = 0; j < M[0].length; j++)
-                t[j][i] = M[i][j];
-        return t;
+        return Tensor.matmul(lastWeights, lastV);
     }
 }
