@@ -3,7 +3,7 @@ public class Sampler {
     static Random rng = new Random();
     static int sample(double[] probs) {
         // Temperature sampling
-        double temp = 0.5; // Lower temp means more deterministic
+        double temp = 0.8; // Slightly higher for more variety
         double[] expProbs = new double[probs.length];
         double sum = 0;
         for (int i = 0; i < probs.length; i++) {

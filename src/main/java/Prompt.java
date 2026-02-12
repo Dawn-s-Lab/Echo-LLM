@@ -17,7 +17,11 @@ public class Prompt {
             }
 
             // run model
-            double[][] probs = model.forward(tokens);
+            int contextStart = Math.max(0, tokens.length - 1024);
+            int[] context = new int[tokens.length - contextStart];
+            System.arraycopy(tokens, contextStart, context, 0, context.length);
+            
+            double[][] probs = model.forward(context);
 
             // sample next token
             double[] last = probs[probs.length - 1];

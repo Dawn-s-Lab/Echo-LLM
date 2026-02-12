@@ -70,6 +70,15 @@ public class Tensor {
                 out[i][j] = A[i][j] * B[i][j];
         return out;
     }
+
+    static double[][] div(double[][] A, double scalar) {
+        double[][] out = new double[A.length][A[0].length];
+        for (int i = 0; i < A.length; i++)
+            for (int j = 0; j < A[0].length; j++)
+                out[i][j] = A[i][j] / scalar;
+        return out;
+    }
+
     static double[][] transpose(double[][] M) {
         double[][] t = new double[M[0].length][M.length];
         for (int i = 0; i < M.length; i++)

@@ -26,8 +26,7 @@ public class Trainer {
                 totalLoss += -Math.log(lastProbs[nextToken] + 1e-10);
                 count++;
 
-                // Backward pass (simplified backprop)
-                // dLoss/dlogits = probs - target
+                // Backward pass (simplified)
                 double[][] dLogits = new double[probs.length][256];
                 for(int t=0; t<probs.length; t++) {
                     for(int v=0; v<256; v++) {
@@ -36,46 +35,49 @@ public class Trainer {
                 }
                 dLogits[probs.length-1][nextToken] -= 1.0;
 
-                // dLoss/dOutputWeights = lastBlockOut^T * dLogits
-                double[][] dOutput = Tensor.matmul(Tensor.transpose(model.lastBlockOut), dLogits);
-                // dLoss/dLastBlockOut = dLogits * OutputWeights^T
-                double[][] dBlockOut = Tensor.matmul(dLogits, Tensor.transpose(model.output));
+                // dLoss/dOutputWeights
+                double[][] lastBlockOut = model.lastBlockOutputs[model.blocks.length];
+                double[][] dOutput = Tensor.matmul(Tensor.transpose(lastBlockOut), dLogits);
+                // dLoss/dX_last
+                double[][] dX = Tensor.matmul(dLogits, Tensor.transpose(model.outputWeights));
 
-                // Backward through TransformerBlock
-                // Residual connections: dX = dBlockOut + dFF_out + dAttn_out
-                // FF backward
-                FeedForward ff = model.block.ff;
-                double[][] dFFOut = dBlockOut;
-                double[][] dW2 = Tensor.matmul(Tensor.transpose(ff.lastH), dFFOut);
-                double[][] dH = Tensor.matmul(dFFOut, Tensor.transpose(ff.W2));
-                // ReLU backward
-                double[][] dZ = new double[ff.lastH.length][ff.lastH[0].length];
-                for(int row=0; row<dH.length; row++) {
-                    for(int col=0; col<dH[0].length; col++) {
-                        if(ff.lastH[row][col] > 0) dZ[row][col] = dH[row][col];
+                // Backprop through blocks
+                for (int b = model.blocks.length - 1; b >= 0; b--) {
+                    TransformerBlock block = model.blocks[b];
+                    // Very simplified backprop for demonstration
+                    // In a real LLM, we'd go through LayerNorm and FF precisely
+                    
+                    // FF update
+                    FeedForward ff = block.ff;
+                    double[][] dW2 = Tensor.matmul(Tensor.transpose(ff.lastH), dX);
+                    double[][] dH = Tensor.matmul(dX, Tensor.transpose(ff.W2));
+                    double[][] dZ = new double[ff.lastH.length][ff.lastH[0].length];
+                    for(int row=0; row<dH.length; row++) {
+                        for(int col=0; col<dH[0].length; col++) {
+                            if(ff.lastH[row][col] > 0) dZ[row][col] = dH[row][col];
+                        }
                     }
+                    double[][] dW1 = Tensor.matmul(Tensor.transpose(ff.lastX), dZ);
+                    
+                    // Attention update (heuristic)
+                    Attention attn = block.attention;
+                    for (int h = 0; h < attn.nHeads; h++) {
+                        double[][] dWv = Tensor.matmul(Tensor.transpose(attn.lastX), Tensor.matmul(Tensor.transpose(attn.lastWeights[h]), dX));
+                        update(attn.Wv[h], dWv, lr);
+                    }
+                    
+                    update(ff.W2, dW2, lr);
+                    update(ff.W1, dW1, lr);
                 }
-                double[][] dW1 = Tensor.matmul(Tensor.transpose(ff.lastX), dZ);
-                double[][] dFF_in = Tensor.matmul(dZ, Tensor.transpose(ff.W1));
 
-                // Attention backward (very simplified)
-                Attention attn = model.block.attention;
-                double[][] dAttnOut = dBlockOut;
-                double[][] dWv = Tensor.matmul(Tensor.transpose(attn.lastX), Tensor.matmul(Tensor.transpose(attn.lastWeights), dAttnOut));
-                double[][] dAttnIn = Tensor.matmul(Tensor.matmul(dAttnOut, Tensor.transpose(attn.lastV)), attn.lastWeights); // heuristic
-
-                // Update weights (SGD)
-                update(model.output, dOutput, lr);
-                update(ff.W2, dW2, lr);
-                update(ff.W1, dW1, lr);
-                update(attn.Wv, dWv, lr);
+                update(model.outputWeights, dOutput, lr);
                 
                 // Update embeddings
                 for(int t=0; t<input.length; t++) {
                     int tok = input[t];
                     if(tok >= 0 && tok < 256) {
                         for(int d=0; d<model.embedding.table[tok].length; d++) {
-                            model.embedding.table[tok][d] -= lr * dBlockOut[t][d];
+                            model.embedding.table[tok][d] -= lr * dX[t][d];
                         }
                     }
                 }
