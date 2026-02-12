@@ -1,4 +1,35 @@
+import java.util.ArrayList;
+import java.util.List;
+
 public class Trainer {
+
+    private static List<String> trainingUrls = new ArrayList<>();
+
+    public static void addTrainingUrl(String url) {
+        trainingUrls.add(url);
+    }
+
+    public static void clearTrainingUrls() {
+        trainingUrls.clear();
+    }
+
+    public static void trainWithUrls(TinyTransformer model, int epochs, double lr) {
+        StringBuilder allData = new StringBuilder();
+        for (String url : trainingUrls) {
+            String data;
+            if (url.contains("wikipedia.org")) {
+                // Extract title if it's a wikipedia link, or just use as is if it's a title
+                String title = url.substring(url.lastIndexOf("/") + 1);
+                data = WikiData.fetchFromWikipedia(title);
+            } else {
+                data = WikiData.fetchFromUrl(url);
+            }
+            if (data != null && !data.startsWith("Error")) {
+                allData.append(data).append(" ");
+            }
+        }
+        train(model, allData.toString(), epochs, lr);
+    }
 
     static void train(TinyTransformer model, String data, int epochs, double lr) {
         if (data == null || data.length() <= 16) {
@@ -11,29 +42,34 @@ public class Trainer {
         for (int epoch = 0; epoch < epochs; epoch++) {
             double totalLoss = 0;
             int count = 0;
-            for (int i = 0; i < tokens.length - contextWindow; i += contextWindow) {
+            for (int i = 0; i < tokens.length - contextWindow - 1; i += contextWindow) {
                 int[] input = new int[contextWindow];
                 System.arraycopy(tokens, i, input, 0, contextWindow);
                 
-                int nextToken = tokens[i + contextWindow];
-                if (nextToken < 0 || nextToken >= 256) nextToken = ' ';
+                int[] targets = new int[contextWindow];
+                for (int t = 0; t < contextWindow; t++) {
+                    int nextToken = tokens[i + t + 1];
+                    if (nextToken < 0 || nextToken >= 256) nextToken = ' ';
+                    targets[t] = nextToken;
+                }
 
                 // Forward
                 double[][] probs = model.forward(input);
-                double[] lastProbs = probs[probs.length - 1];
                 
-                // Loss (Cross Entropy)
-                totalLoss += -Math.log(lastProbs[nextToken] + 1e-10);
-                count++;
+                // Loss (Cross Entropy) over all timesteps
+                for (int t = 0; t < contextWindow; t++) {
+                    totalLoss += -Math.log(probs[t][targets[t]] + 1e-10);
+                    count++;
+                }
 
-                // Backward pass (simplified)
+                // Backward pass
                 double[][] dLogits = new double[probs.length][256];
                 for(int t=0; t<probs.length; t++) {
                     for(int v=0; v<256; v++) {
                         dLogits[t][v] = probs[t][v];
                     }
+                    dLogits[t][targets[t]] -= 1.0;
                 }
-                dLogits[probs.length-1][nextToken] -= 1.0;
 
                 // dLoss/dOutputWeights
                 double[][] lastBlockOut = model.lastBlockOutputs[model.blocks.length];

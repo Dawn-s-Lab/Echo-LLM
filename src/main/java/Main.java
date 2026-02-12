@@ -10,11 +10,24 @@ public class Main {
         String answer = scanner.nextLine().trim().toLowerCase();
 
         if (answer.equals("y")) {
-            String trainingData = WikiData.getSampleData();
-            if (trainingData == null) trainingData = "";
-            System.out.println("Fetched " + trainingData.length() + " characters from Wikipedia.");
-            System.out.println("Training on Wikipedia data...");
-            Trainer.train(model, trainingData, 20, 0.001);
+            System.out.println("Do you want to use custom URLs for training? (y/n): ");
+            String custom = scanner.nextLine().trim().toLowerCase();
+            if (custom.equals("y")) {
+                System.out.println("Enter URLs (one per line, empty line to finish):");
+                while (true) {
+                    String url = scanner.nextLine().trim();
+                    if (url.isEmpty()) break;
+                    Trainer.addTrainingUrl(url);
+                }
+                System.out.println("Training on custom URLs...");
+                Trainer.trainWithUrls(model, 20, 0.001);
+            } else {
+                String trainingData = WikiData.getSampleData();
+                if (trainingData == null) trainingData = "";
+                System.out.println("Fetched " + trainingData.length() + " characters from Wikipedia.");
+                System.out.println("Training on Wikipedia data...");
+                Trainer.train(model, trainingData, 20, 0.001);
+            }
             model.saveWeights("weights.bin");
         } else {
             model.loadWeights("weights.bin");

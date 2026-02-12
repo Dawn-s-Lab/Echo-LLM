@@ -47,23 +47,34 @@ public class WikiData {
         return null;
     }
 
-    public static String fetchFromWikipedia(String title) {
+    public static String fetchFromUrl(String urlString) {
         try {
             HttpClient client = HttpClient.newBuilder()
                     .followRedirects(HttpClient.Redirect.NORMAL)
                     .build();
-            String url = "https://en.wikipedia.org/w/api.php?action=query&prop=extracts&exintro&explaintext&format=json&redirects=1&titles=" + title;
-            
+
             HttpRequest request = HttpRequest.newBuilder()
-                    .uri(URI.create(url))
+                    .uri(URI.create(urlString))
                     .header("User-Agent", "TinyTransformerBot/1.0")
                     .build();
 
             HttpResponse<String> response = client.send(request, HttpResponse.BodyHandlers.ofString());
-            String body = response.body();
-            System.out.println("DEBUG: Wikipedia Response Body: " + body);
+            return response.body();
+        } catch (Exception e) {
+            e.printStackTrace();
+            return "Error fetching from URL: " + e.getMessage();
+        }
+    }
 
-            // Simple regex to extract the "extract" field from Wikipedia API JSON
+    public static String fetchFromWikipedia(String title) {
+        String url = "https://en.wikipedia.org/w/api.php?action=query&prop=extracts&exintro&explaintext&format=json&redirects=1&titles=" + title;
+        String body = fetchFromUrl(url);
+        
+        if (body.startsWith("Error")) return body;
+        
+        System.out.println("DEBUG: Wikipedia Response Body: " + (body.length() > 100 ? body.substring(0, 100) + "..." : body));
+
+        // Simple regex to extract the "extract" field from Wikipedia API JSON
             // Using DOTALL to match across lines and a non-greedy match.
             // Note: Wikipedia API usually escapes double quotes as \", so (.*?) might over-consume if not careful,
             // but for a single "extract" field in this specific API call it should be fine.
@@ -88,9 +99,5 @@ public class WikiData {
             }
 
             return "Failed to parse Wikipedia response. Body: " + (body.length() > 100 ? body.substring(0, 100) : body);
-        } catch (Exception e) {
-            e.printStackTrace();
-            return "Error fetching from Wikipedia: " + e.getMessage();
-        }
     }
 }
