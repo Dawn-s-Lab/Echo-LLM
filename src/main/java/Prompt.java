@@ -17,7 +17,7 @@ public class Prompt {
             }
 
             // run model
-            int contextStart = Math.max(0, tokens.length - 1024);
+            int contextStart = Math.max(0, tokens.length - 16);
             int[] context = new int[tokens.length - contextStart];
             System.arraycopy(tokens, contextStart, context, 0, context.length);
             

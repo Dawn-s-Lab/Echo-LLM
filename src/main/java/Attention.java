@@ -7,6 +7,7 @@ public class Attention {
     
     double[][] lastX;
     double[][] lastOut;
+    double[][] lastConcat;
     double[][][] lastQ, lastK, lastV;
     double[][][] lastWeights;
 
@@ -71,6 +72,7 @@ public class Attention {
         }
         
         this.lastOut = Tensor.matmul(concat, Wo);
+        this.lastConcat = concat;
         return lastOut;
     }
 }

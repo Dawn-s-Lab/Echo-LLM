@@ -20,13 +20,13 @@ public class Main {
                     Trainer.addTrainingUrl(url);
                 }
                 System.out.println("Training on custom URLs...");
-                Trainer.trainWithUrls(model, 20, 0.001);
+                Trainer.trainWithUrls(model, 20, 0.0005);
             } else {
                 String trainingData = WikiData.getSampleData();
                 if (trainingData == null) trainingData = "";
                 System.out.println("Fetched " + trainingData.length() + " characters from Wikipedia.");
                 System.out.println("Training on Wikipedia data...");
-                Trainer.train(model, trainingData, 20, 0.001);
+                Trainer.train(model, trainingData, 20, 0.0005);
             }
             model.saveWeights("weights.bin");
         } else {
@@ -35,7 +35,7 @@ public class Main {
         }
 
         System.out.println("\nGenerating:");
-        String output = Prompt.prompt(model, "Transformers are ", 100);
+        String output = Prompt.prompt(model, "Transformers are", 100);
 
         System.out.println(output);
     }
