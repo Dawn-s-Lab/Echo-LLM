@@ -11,7 +11,7 @@ public class Trainer {
         for (int epoch = 0; epoch < epochs; epoch++) {
             double totalLoss = 0;
             int count = 0;
-            for (int i = 0; i < tokens.length - contextWindow; i++) {
+            for (int i = 0; i < tokens.length - contextWindow; i += contextWindow) {
                 int[] input = new int[contextWindow];
                 System.arraycopy(tokens, i, input, 0, contextWindow);
                 

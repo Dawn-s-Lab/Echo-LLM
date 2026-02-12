@@ -4,10 +4,17 @@ public class Tensor {
         int m = A.length, n = B[0].length, p = B.length;
         double[][] out = new double[m][n];
 
-        for (int i = 0; i < m; i++)
-            for (int j = 0; j < n; j++)
-                for (int k = 0; k < p; k++)
-                    out[i][j] += A[i][k] * B[k][j];
+        for (int i = 0; i < m; i++) {
+            double[] out_i = out[i];
+            double[] A_i = A[i];
+            for (int k = 0; k < p; k++) {
+                double a_ik = A_i[k];
+                double[] B_k = B[k];
+                for (int j = 0; j < n; j++) {
+                    out_i[j] += a_ik * B_k[j];
+                }
+            }
+        }
 
         return out;
     }

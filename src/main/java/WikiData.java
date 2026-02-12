@@ -61,7 +61,7 @@ public class WikiData {
 
             HttpResponse<String> response = client.send(request, HttpResponse.BodyHandlers.ofString());
             String body = response.body();
-            // System.out.println("DEBUG: Wikipedia Response Body: " + body);
+            System.out.println("DEBUG: Wikipedia Response Body: " + body);
 
             // Simple regex to extract the "extract" field from Wikipedia API JSON
             // Using DOTALL to match across lines and a non-greedy match.

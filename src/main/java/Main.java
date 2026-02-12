@@ -14,7 +14,7 @@ public class Main {
             if (trainingData == null) trainingData = "";
             System.out.println("Fetched " + trainingData.length() + " characters from Wikipedia.");
             System.out.println("Training on Wikipedia data...");
-            Trainer.train(model, trainingData, 100, 0.001);
+            Trainer.train(model, trainingData, 20, 0.001);
             model.saveWeights("weights.bin");
         } else {
             model.loadWeights("weights.bin");
