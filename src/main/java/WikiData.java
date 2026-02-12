@@ -55,7 +55,7 @@ public class WikiData {
 
             HttpRequest request = HttpRequest.newBuilder()
                     .uri(URI.create(urlString))
-                    .header("User-Agent", "TinyTransformerBot/1.0")
+                    .header("User-Agent", "Echo/1.0")
                     .build();
 
             HttpResponse<String> response = client.send(request, HttpResponse.BodyHandlers.ofString());
